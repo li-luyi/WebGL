@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>webgl-绘制鼠标可移动的立方体</title>
+</head>
+<body>
+  <script src="./utils/webgl-helper.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <canvas id="canvas" width="500" height="500"></canvas>
+
+  <script type="shader-source" id="vertexShader">
+    attribute vec4 a_Position;
+    attribute vec4 a_Color;
+    varying vec4 v_Color;
+    uniform mat4 u_ModelMatrix;
+  
+    void main () {
+      gl_Position = u_ModelMatrix * a_Position;
+      v_Color= a_Color;
+    }
+  </script>
+  <script type="shader-source" id="fragmentShader">
+      //浮点数设置为中等精度
+      precision mediump float;
+      varying vec4 v_Color;
+
+      void main () {
+        gl_FragColor = v_Color;
+      }
+  </script>
+  
+
+  <script>
+    // 创建webgl环境
+    /** @type {HTMLCanvasElement} */
+    var canvas=document.getElementById('canvas')
+    var gl=canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+
+    // 创建着色器
+    var vertexShader=createShaderFromScript(gl,gl.VERTEX_SHADER,'vertexShader')
+    var fragmentShader=createShaderFromScript(gl,gl.FRAGMENT_SHADER,'fragmentShader')
+
+    // 创建着色器程序
+    var program = createProgram(gl,vertexShader,fragmentShader)
+
+    // 使用程序
+    gl.useProgram(program)
+
+    let a_Position, a_Color, u_ModelMatrix, indices
+
+    let baseRotateX = 0
+    let baseRotateY = 0
+
+    function useMouseMatrixRotate (baseRotateX = 0, baseRotateY = 0) {
+      let mousedownX = 0
+      let mousedownY = 0
+
+      let canDrag = false
+
+      const mousemove = (e, gl, u_ModelMatrix, indices, mode = 'TRIANGLES') => {
+        if (!canDrag) return
+        const moveX = (mousedownX - e.offsetX + baseRotateX) % 360
+        const moveY = (mousedownY - e.offsetY + baseRotateY) % 360
+
+        const matrixX = new THREE.Matrix4();
+        const matrixY = new THREE.Matrix4();
+        const radianX = moveX * Math.PI / 180
+        const radianY = moveY * Math.PI / 180
+        matrixX.makeRotationY(radianX)
+        matrixY.makeRotationX(radianY)
+        matrixX.multiply(matrixY)
+        gl.uniformMatrix4fv(u_ModelMatrix, false, matrixX.elements)
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+        gl.drawElements(gl[mode], indices.length, gl.UNSIGNED_BYTE, 0)
+      }
+
+      const mousedown = e => {
+        canDrag = true
+        mousedownX = e.offsetX
+        mousedownY = e.offsetY
+      }
+
+      const mouseleave = () => {
+        canDrag = false
+      }
+
+      const mouseup = e => {
+        canDrag = false
+        baseRotateX = (mousedownX - e.offsetX + baseRotateX) % 360
+        baseRotateY = (mousedownY - e.offsetY + baseRotateY) % 360
+      }
+
+      return {
+        mousemove,
+        mousedown,
+        mouseleave,
+        mouseup
+      }
+    }
+
+    const mouseMatrixRotate=useMouseMatrixRotate()
+
+    canvas.addEventListener('mousedown',function (e) {
+      mouseMatrixRotate.mousedown(e)
+    })
+    canvas.addEventListener('mousemove', function(e){
+      mouseMatrixRotate.mousemove(e,gl, u_ModelMatrix, indices)
+    })
+    canvas.addEventListener('mouseleave',function (e) {
+      mouseMatrixRotate.mouseleave(e)
+    })
+    canvas.addEventListener('mouseup',function (e) {
+      mouseMatrixRotate.mouseup(e)
+    })
+
+    a_Position = gl.getAttribLocation(program, 'a_Position')
+    a_Color = gl.getAttribLocation(program, 'a_Color')
+    u_ModelMatrix = gl.getUniformLocation(program, 'u_ModelMatrix')
+    // 使用Three.js的Matrix4类
+    const matrix = new THREE.Matrix4();
+    gl.uniformMatrix4fv(u_ModelMatrix, false, matrix.elements)
+    const vertices = new Float32Array([
+      -.5, .5, .5, // v0
+      -.5, -.5, .5, // v1
+      .5, -.5, .5, // v2
+      .5, .5, .5, // v3
+      .5, .5, -.5, // v4
+      .5, -.5, -.5, // v5
+      -.5, -.5, -.5, // v6
+      -.5, .5, -.5,  // v7
+    ])
+    const colors = new Float32Array([
+      1., 1., 1., 1.,
+      1., 1., 0., 1.,
+      1., 1., 1., 1.,
+      1., 0., 1., 1.,
+      0., 1., 1., 1.,
+      0., 0., 1., 1.,
+      1., 1., 0., 1.,
+      0., 1., 1., 1.,
+    ])
+
+    indices = new Uint8Array([
+      0, 1, 2, 0, 2, 3, // 前
+      3, 2, 5, 3, 5, 4, // 右
+      4, 5, 6, 4, 6, 7, // 后
+      7, 0, 6, 0, 1, 6, // 左
+      0, 3, 4, 0, 4, 7, // 上
+      1, 2, 5, 1, 5, 6 // 下
+    ])
+
+    const indexBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW)
+    gl.enable(gl.DEPTH_TEST)
+
+    // 顶点坐标
+    createBuffer(gl, gl.ARRAY_BUFFER, vertices, a_Position, 3, 0, 0)
+    // 颜色值
+    createBuffer(gl, gl.ARRAY_BUFFER, colors, a_Color, 4, 0, 0)
+
+    gl.clearColor(0., 0., 0., .9)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_BYTE, 0)
+  </script>
+</body>
+</html>

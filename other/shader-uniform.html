@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebGL绘制三角形- 投影 - 偏移</title>
+</head>
+<script src="./initShader.js"></script>
+<body>
+   <!--canvas标签创建一个宽高均为500像素，背景为蓝色的矩形画布-->
+   <canvas id="webgl" width="500" height="500" style="background-color: skyblue"></canvas>
+
+    <!-- 顶点着色器源码 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        //非单点，用类型化数组
+        //attribute声明vec4类型变量apos
+        attribute vec4 apos;
+        void main() {
+            //顶点坐标apos赋值给内置变量gl_Position
+            //逐顶点处理数据
+            gl_Position = apos;
+        }
+    </script>
+    <!-- 片元着色器源码 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        void main() {
+            gl_FragColor = vec4(1.0,0.0,0.0,1.0);
+        }
+    </script>
+    <script>
+      //通过getElementById()方法获取canvas画布
+      var canvas=document.getElementById('webgl');
+      //通过方法getContext()获取WebGL上下文
+      var gl=canvas.getContext('webgl');
+  
+      //顶点着色器源码
+      var vertexShaderSource = document.getElementById('vertexShader').innerText;
+      //片元着色器源码
+      var fragShaderSource = document.getElementById('fragmentShader').innerText;
+      //初始化着色器
+      var program = initShader(gl,vertexShaderSource,fragShaderSource);
+      // 获取顶点着色器的位置变量apos,即aposLocation指向apos变量
+      var aposLocation = gl.getAttribLocation(program,'apos')
+
+      // 类型数组构造函数Float32Array创建顶点数组
+      //9个元素构建三个顶点的xyz坐标值
+      // 数组里9个元素，每间隔3个为一组，分别代表xyz轴上的坐标值
+      var data=new Float32Array([
+          0.0, 0.0, 1.0,//三角形顶点1坐标
+          0.0, 1.0, 0.0,//三角形顶点2坐标
+          1.0, 0.0, 0.0//三角形顶点3坐标
+      ]);
+
+      //作用： 把内存中顶点数据输入显存，这样可以提高图形的处理效率
+      //创建缓冲区对象
+      var buffer=gl.createBuffer();
+      //绑定缓冲区对象,激活buffer
+      // gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+      gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+      //顶点数组data数据传入缓冲区
+      gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
+      //缓冲区中的数据按照一定的规律传递给位置变量apos
+      gl.vertexAttribPointer(aposLocation,3,gl.FLOAT,false,0,0);
+      //允许数据传递
+      gl.enableVertexAttribArray(aposLocation);
+
+      // 定义各坐标点的统一偏移量
+      var Tx=0.2,
+          Ty=0.3
+          Tz=0.0
+      // 获取到顶点着色器中uniform变量
+      var u_Translation=gl.getUniformLocation(program,'u_Translation')
+      // 将多个偏移量赋值给uniform变量
+      gl.uniform4f(u_Translation,Tx,Ty,Tz,0.0)
+ 
+      //开始绘制，显示器显示结果
+      // 参数：
+      // 1：绘制对象 2：从第几个点开始绘制 3：绘制的点个数
+      gl.drawArrays(gl.TRIANGLES,0,3);
+
+      
+
+    </script>
+  
+</body>
+</html>

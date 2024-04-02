@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>webgl-使用鼠标动态绘制线段</title>
+</head>
+<body>
+  <canvas id="canvas" width="500" height="500"></canvas>
+
+  <script src="./utils/webgl-helper.js"></script>
+
+  <script type="shader-source" id="vertexShader">
+    // 设置浮点数精度为中等精度
+    precision mediump float;
+    attribute vec2 a_Position;
+    // 接收canvas的宽高尺寸
+    attribute vec2 a_Screen_Size;
+    void main(){
+      // 将屏幕坐标系改为裁剪坐标（裁剪坐标系）
+      vec2 positions = (a_Position/a_Screen_Size)*2.0 - 1.0;
+      positions=positions*vec2(1.0,-1.0);
+      // 声明顶点位置
+      gl_Position=vec4(positions,0.0,1.0);
+    }
+  </script>
+  <script type="shader-source" id="fragmentShader">
+    // 设置浮点数精度为中等精度
+    precision mediump float;
+    // 接收JavaScript传过来的颜色值（rgba）
+    uniform vec4 u_Color;
+    void main(){
+      // 将普通的颜色表示转化为WebGL需要的表达式
+      vec4 color = u_Color/vec4(255,255,255,1);
+      gl_FragColor= color;
+    }
+  </script>
+
+  <script>
+    // 创建webgl环境
+    /** @type {HTMLCanvasElement} */
+    var canvas=document.getElementById('canvas')
+    var gl=canvas.getContext(canvas)|| canvas.getContext('experimental-webgl')
+
+    // 创建着色器
+    var vertexShader=createShaderFromScript(gl,gl.VERTEX_SHADER,'vertexShader')
+    var fragmentShader=createShaderFromScript(gl,gl.FRAGMENT_SHADER,'fragmentShader')
+
+    // 创建着色器程序
+    var program = createProgram(gl,vertexShader,fragmentShader)
+
+    // 使用程序
+    gl.useProgram(program)
+
+    // 开始绘制-------------------------
+    // 设置线段顶点
+    var positions=[]
+    var a_Position=gl.getAttribLocation(program,'a_Position')
+    // 找到顶点着色器中变量a_Screen_Size
+    var a_Screen_Size=gl.getAttribLocation(program,'a_Screen_Size')
+    // 找到片元着色器中变量u_Color
+    var u_Color=gl.getUniformLocation(program,'u_Color')
+    // 给变量传递canvas宽高值
+    gl.vertexAttrib2f(a_Screen_Size,canvas.width,canvas.height)
+
+    // 添加点击事件，每点击三个点绘制一个三角形
+    canvas.addEventListener('mouseup',e=>{
+      var x= e.pageX
+      var y=e.pageY
+      positions.push(x)
+      positions.push(y)
+      if (positions.length > 0) {
+        // 向缓冲区中赋值新的顶点数据
+        gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(positions),gl.DYNAMIC_DRAW)
+        // 重新渲染
+        render(gl)
+      }
+    })
+
+    // 缓冲区
+    var buffer=gl.createBuffer()
+    // 绑定缓冲区
+    gl.bindBuffer(gl.ARRAY_BUFFER,buffer)
+    // 往缓冲区写入数据
+    // 注意，着色器程序中的变量需要强类型数据，所以我们在往缓冲区写数据的时候，JS 的
+    // 弱类型数组一定要用类型化数组转化一下。上面的 new Float32Array(positions)，目
+    // 的就是将 JavaScript 中的弱类型数组转化为强类型数组
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(positions),gl.STATIC_DRAW)
+    // 启用a_Position
+    gl.enableVertexAttribArray(a_Position)
+
+    // 设置从缓冲区中获取数据的方式---------------------
+    // 每次取两个数据
+    var size=2
+    // 每个数据的类型
+    var type=gl.FLOAT
+    // 不需要归一化数据
+    var nomarlize=false
+    // 步长
+    var stride=0
+    // 从缓冲区起始位置开始读取
+    var offset=0
+    // 将a_Position变量获取数据的缓冲区指向当前绑定的buffer
+    gl.vertexAttribPointer(a_Position,size,type,nomarlize,stride,offset)
+
+    // 绘制
+    gl.clearColor(0.0,0.0,0.0,1.0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    
+    function render(gl) {
+      var color=randomColor()
+      // 给u_Color传递值
+      gl.uniform4f(u_Color,color.r,color.g,color.b,color.a)
+      // 绘制
+      gl.clearColor(0.0,0.0,0.0,1.0)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      // LINE:基本线段 LINE_STRIP:带状线段 LINE_LOOP：环状线段
+      gl.drawArrays(gl.LINE_STRIP,0,positions.length/2)
+    }
+  </script>
+</body>
+</html>
