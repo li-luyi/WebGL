@@ -180,7 +180,6 @@
     var Vector3 = window.lib3d.Vector3;
     resizeCanvas(canvas);
 
-    var autoChangeLightButton = document.getElementById('autoChangeLightButton')
     var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
 
     // 创建着色器
@@ -197,7 +196,8 @@
     var rate = canvas.width / canvas.height;
     var per = matrix.ortho(-rate * 25, rate * 25, -25, 25, 100, -100);
 
-    var cube = createSphere(8, 6, 12); //createCube(10, 10, 10);
+    // 创建一个球的顶点信息
+    var cube = createSphere(8, 6, 12); //createCube(10, 10, 10);createSphere(8, 6, 12)
     cube = transformIndicesToUnIndices(cube);
     createColorForVertex(cube);
     var positions = cube.positions;
@@ -235,6 +235,7 @@
     var target = new Vector3(0, 0, 0);
     var up = new Vector3(0, 1, 0);
     var cameraMatrix = matrix.lookAt(cameraPosition, target, up);
+    // identity用来初始化一个4维矩阵，对角线分量均为1
     var modelMatrix = matrix.identity();
     // 从相机矩阵取逆获取视图矩阵
     var viewMatrix = matrix.inverse(cameraMatrix);
@@ -299,12 +300,14 @@
     }
 
     function setUniforms() {
+      // 设置光源颜色
       gl.uniform3f(
         u_LightColor,
         uniforms['lightColor'].r / 255,
         uniforms['lightColor'].g / 255,
         uniforms['lightColor'].b / 255
       );
+      // 设置光源
       gl.uniform3f(
         u_LightPosition,
         uniforms['lightX'],
@@ -313,6 +316,7 @@
       );
       gl.uniform1f(u_AmbientFactor, uniforms['ambientFactor']);
       modelMatrix = matrix.rotationY((Math.PI / 180) * uniforms['yRotation']);
+      // rotateX将原来的矩阵沿着X轴旋转，得到一个新的矩阵
       modelMatrix = matrix.rotateX(
         modelMatrix,
         (Math.PI / 180) * uniforms['xRotation']

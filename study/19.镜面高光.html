@@ -107,7 +107,7 @@
     </div>
     <div>
       <span>环境光颜色：</span>
-      <input id="lightColor" class="color" type="color" value="#FFFFFF">
+      <input id="lightColor" class="range" type="color" value="#FFFFFF">
       <label id="lightColorValue" style="width: 200px"></label>
     </div>
     <button id="switchButton">播放</button>
@@ -140,20 +140,30 @@
 
   <!-- 顶点着色器源码 -->
   <script type="shader-source" id="vertexShader">
-    // 接收顶点坐标 (x, y)
     precision mediump float;
+    // 接收顶点坐标 (x, y, z)
     attribute vec3 a_Position;
+    // 颜色信息
     attribute vec4 a_Color;
+    // 片元颜色
     varying vec4 v_Color;
+    // 顶点法线
     attribute vec3 a_Normal;
     varying vec3 v_Normal;
+    // 变换矩阵
     uniform mat4 u_Matrix;
     varying vec3 v_Position;
+    // 法线变换矩阵
     uniform mat4 u_NormalMatrix;
+    // 模型变换矩阵
     uniform mat4 u_ModelMatrix;
+    //入射光方向向量
     uniform vec3 u_LightPosition ;
+    // 入射光方向向量
     varying vec3 v_LightDirection ;
+    // 观察者坐标
     uniform vec3 u_ViewPosition;
+    // 观察者向量
     varying vec3 v_ViewDirection;
     void main(){
       gl_Position = u_Matrix * vec4(a_Position, 1);
@@ -190,22 +200,27 @@
       vec3 lightDirection =   u_LightPosition  - v_Position;
 
       //lightDirection = v_LightDirection;
+      // 归一化光线照射向量
       lightDirection= normalize(lightDirection);
       // 漫反射因子
       float diffuseFactor = dot(normalize(lightDirection), normalize(v_Normal));
-      //
+      // 如果大于90度，则无光线进入人眼，漫反射因子设置为0
       diffuseFactor = max(diffuseFactor, 0.0);
       // 漫反射分量
       vec3 diffuseLightColor =u_LightColor * diffuseFactor;
 
+      //归一化视线观察向量
       vec3 viewDirection = normalize(u_ViewPosition - v_Position);
 
       //viewDirection = normalize(v_ViewDirection);
       vec3 halfVector = (viewDirection + lightDirection);
+      // 反射向量
       vec3 reflectDirection = reflect(-lightDirection, normalize(v_Normal));
      //float specialFactor = dot(normalize(-viewDirection), normalize(reflectDirection));
 
+      //初始化镜面光照因子
       float specialFactor= 0.0;
+      //如果有光照进入人眼
       if(diffuseFactor > 0.0){
       if(enableBlinPhong){
         specialFactor = dot(normalize(v_Normal),normalize(halfVector));
@@ -216,8 +231,10 @@
        specialFactor = max(specialFactor,0.0);
        specialFactor = pow(specialFactor, shiness);
      }
+     // 计算镜面光照分量
       vec3 specialLightColor  = u_LightColor * specialFactor * 0.5;
 
+      // 计算总光照
       vec3 outColor = ambient;
       if(enableDiffuse) {
         outColor += diffuseLightColor;
@@ -227,6 +244,7 @@
         outColor += specialLightColor;
       }
 
+      //将物体自身颜色乘以总光照，即人眼看到的物体颜色
        gl_FragColor = v_Color * vec4(outColor  , 1);
      // gl_FragColor = v_Color * vec4((ambient + diffuseLightColor),1) ;
     }
